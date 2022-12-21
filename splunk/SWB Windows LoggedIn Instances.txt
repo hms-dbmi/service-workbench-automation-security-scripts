@@ -1,0 +1,2 @@
+index = swb_windows_winevents_logs source="WinEventLog:Security" EventCode=4624 eventtype=windows_logon_success earliest=-21d latest=now user="administrator" Logon_Type=10 
+| table ComputerName

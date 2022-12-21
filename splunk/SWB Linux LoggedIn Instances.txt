@@ -1,0 +1,2 @@
+index=hms_aws_swb* sourcetype="linux_secure" (tag=authentication AND tag=success) earliest=-21d latest=now (user="rstudio-user" OR user="ec2-user" OR user="root")
+| table host
