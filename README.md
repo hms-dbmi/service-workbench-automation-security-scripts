@@ -28,4 +28,7 @@ Windows
 * CloudWatch agent (latest available stable version) to push status of agents. 
 * Splunk agent V9.0.1 is used to pull in system logs into the Splunk SIEM in boundary. 
 * Trend Micro DSM agent (latest available stable version) used for Anti Virus/Malware, IDS/IPS, Firewall etc. 
-* Nessus Agent v10.3.1 is used to perform vulnerablity scans. 
+* Nessus Agent v10.3.1 is used to perform vulnerablity scans.
+
+
+This was developed by stackArmor ( stackarmor.com ) in support of HMS/DBMI for thier SWB efforts.
