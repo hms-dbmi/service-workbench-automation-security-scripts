@@ -31,4 +31,4 @@ Windows
 * Nessus Agent v10.3.1 is used to perform vulnerablity scans.
 
 
-This was developed by stackArmor ( https://stackarmor.com ) in support of HMS/DBMI for thier SWB efforts.
+This was developed by stackArmor ( https://stackarmor.com ) in support of HMS/DBMI for their SWB efforts.
