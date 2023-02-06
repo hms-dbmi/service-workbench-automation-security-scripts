@@ -5,6 +5,7 @@
 * Delete unused EC2 Instances & SageMaker notebooks after 7 days
 * Use AWS Lambda, DynamoDB, S3, SNS, and EventBridge to power the service
 * Lambda function to track and delete SSH keys older than 90 days from the DynamoDB Table
+* SWB Auto Stop functionality for EC2 instances based on CPU Utilization that is customized for the platform and instance type
 
 ## Getting Started
 To use the HMS Service Workbench, you'll need to set up the following prerequisites:
