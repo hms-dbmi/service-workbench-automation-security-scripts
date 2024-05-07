@@ -68,6 +68,8 @@ The following list provides a description of the setting along with the environm
     * You can define an Amazon Simple Notification Service (Amazon SNS) topic that the Lambda function will specify as the notification target for created alarms. You provide the Amazon SNS Topic Amazon Resource Name (ARN) with the **AlarmNotificationARN** parameter when you deploy the CloudWatchAutoAlarms.yaml CloudFormation template.  If you leave the **AlarmNotificationARN** parameter value blank, then this environment variable is not set and created alarms won't use notifications.
 * **ALARM_IDENTIFIER_PREFIX**:  AutoAlarm
     * The prefix name that is added to the beginning of each CloudWatch alarm created by the solution.  (e.g. For "AutoAlarm":  (e.g. AutoAlarm-i-00e4f327736cb077f-CPUUtilization-GreaterThanThreshold-80-5m))  You should update this variable via the **AlarmIdentifierPrefix** in the [CloudWatchAutoAlarms.yaml](./CloudWatchAutoAlarms.yaml) CloudFormation template so that the IAM policy is updated to align with your custom name. 
+* **DYNAMODB_TABLE_NAME**:  REPLACE_ME
+    * This is an environment variable for the AutoStopEC2 lambda function. This is used to store the instance state of the EC2 instances.
 
 You can update the thresholds for the default alarms by updating the following environment variables:
 
