@@ -57,11 +57,83 @@ Resources:
           ALARM_IDENTIFIER_PREFIX: !Ref AlarmIdentifierPrefix
           CLOUDWATCH_APPEND_DIMENSIONS: 'InstanceId, ImageId, InstanceType'
           AWS_ACCOUNT_ID: !Ref AWS::AccountId
+          LAMBDA_AUTO_STOP_ARN: !GetAtt LambdaAutoStopper.Arn
 
           ALARM_LAMBDA_ERROR_THRESHOLD: 0
           ALARM_LAMBDA_THROTTLE_THRESHOLD: 0
 
           DEFAULT_ALARM_SNS_TOPIC_ARN: !If [ConfigureAlarmNotifications, !Ref AlarmNotificationARN, !Ref "AWS::NoValue"]
+
+  LambdaAutoStopper:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: "AutoStopEC2"
+      Handler: auto_stop_ec2.lambda_handler
+      Runtime: python3.8
+      Role:  !GetAtt LambdaAutoStopperRole.Arn
+      MemorySize: !Ref Memory
+      Timeout: 600
+      Code:
+        S3Bucket: !Ref S3DeploymentBucket
+        S3Key: !Ref S3DeploymentKey
+      Environment:
+        Variables:
+          AWS_ACCOUNT_ID: !Ref AWS::AccountId
+          DYNAMODB_TABLE_NAME: "REPLACE_ME"
+      Tags:
+        - Key: "EC2_AUTO_STOP"
+          Value: "true"
+
+  LambdaAutoStopperRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: "lambda.amazonaws.com"
+            Action: "sts:AssumeRole"
+      Policies:
+        - PolicyName: "LambdaEc2AutoStopperPolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricData
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogGroups
+                Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:*"
+              - Effect: Allow
+                Action:
+                  - logs:PutLogEvents
+                Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:*:log-stream:*"
+              - Effect: "Allow"
+                Action:
+                  - "dynamodb:GetItem"
+                  - "dynamodb:Scan"
+                  - "dynamodb:Query"
+                  - "dynamodb:PutItem"
+                  - "dynamodb:UpdateItem"
+                  - "dynamodb:DeleteItem"
+                Resource: "*"
+              - Effect: "Allow"
+                Action:
+                  - "ec2:StopInstances"
+                Resource: "*"
+
+  LambdaAutoStopperInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: "lambda:InvokeFunction"
+      FunctionName: !GetAtt LambdaAutoStopper.Arn
+      Principal: "lambda.alarms.cloudwatch.amazonaws.com"
 
   CloudWatchAutoAlarmLambdaRole:
     Type: AWS::IAM::Role

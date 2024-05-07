@@ -143,7 +143,7 @@ def process_lambda_alarms(function_name, tags, activation_tag, default_alarms, s
                          dimensions, sns_topic_arn, alarm_identifier, DEFAULT_THRESHOLD)
 
 
-def create_alarm_from_tag(id, alarm_tag, instance_info, metric_dimensions_map, sns_topic_arn, alarm_separator,
+def create_alarm_from_tag(instance_id, alarm_tag, instance_info, metric_dimensions_map, sns_topic_arn, alarm_separator,
                           alarm_identifier, threshold):
     alarm_properties = alarm_tag['Key'].split(alarm_separator)
     namespace = alarm_properties[1]
@@ -190,7 +190,7 @@ def create_alarm_from_tag(id, alarm_tag, instance_info, metric_dimensions_map, s
         logger.error('Unable to determine the dimensions for alarm tag: {}'.format(alarm_tag))
         raise Exception
 
-    AlarmName = alarm_separator.join([alarm_identifier, id, namespace, MetricName])
+    AlarmName = alarm_separator.join([alarm_identifier, instance_id, namespace, MetricName])
     properties_offset = 0
     try:
         if additional_dimensions:
@@ -351,28 +351,13 @@ def create_alarm(AlarmName, MetricName, ComparisonOperator, Period, Threshold, S
     try:
         cw_client = boto3_client('cloudwatch')
 
-        alarm = {
-            'AlarmName': AlarmName,
-            'AlarmDescription': AlarmDescription,
-            'MetricName': MetricName,
-            'Namespace': Namespace,
-            'Dimensions': Dimensions,
-            'Period': Period,
-            'EvaluationPeriods': 12,
-            'DatapointsToAlarm':10,
-            'TreatMissingData':"ignore",
-            'Threshold': threshold,
-            'ComparisonOperator': ComparisonOperator,
-            'Statistic': Statistic,
-            'ActionsEnabled': True,
-        }
-
-        region = os.environ['AWS_REGION']
-        account = os.environ['AWS_ACCOUNT_ID']
-
-        alarm['AlarmActions'] = [
-            f"arn:aws:swf:{region}:{account}:action/actions/AWS_EC2.InstanceId.Stop/1.0"
-        ]
+        alarm = {'AlarmName': AlarmName, 'AlarmDescription': AlarmDescription, 'MetricName': MetricName,
+                 'Namespace': Namespace, 'Dimensions': Dimensions, 'Period': Period, 'EvaluationPeriods': 12,
+                 'DatapointsToAlarm': 10, 'TreatMissingData': "ignore", 'Threshold': threshold,
+                 'ComparisonOperator': ComparisonOperator, 'Statistic': Statistic, 'ActionsEnabled': True,
+                 'AlarmActions': [
+                     os.environ['LAMBDA_AUTO_STOP_ARN']
+                 ]}
 
         if sns_topic_arn is not None:
             alarm['AlarmActions'].append(sns_topic_arn)
