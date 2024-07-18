@@ -1,3 +1,10 @@
+# This CloudFormation template is designed to automate the creation of an IAM role
+# that allows a specific Lambda function to access a DynamoDB table. It defines
+# the parameters needed to specify the ARN of the Lambda function's role and the
+# ARN of the DynamoDB table. The template includes a single resource, an IAM role,
+# that the Lambda function can assume to perform various actions on the specified
+# DynamoDB table.
+
 AWSTemplateFormatVersion: '2010-09-09'
 Description: Automatically Create DynamoDb Role for Lambda function to assume
 Parameters:
