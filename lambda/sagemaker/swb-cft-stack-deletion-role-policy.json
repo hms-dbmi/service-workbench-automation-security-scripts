@@ -1,0 +1,19 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "sagemaker:ListTags",
+                "cloudformation:DeleteStack",
+                "dynamodb:PutItem",
+                "dynamodb:GetItem",
+                "dynamodb:DeleteItem",
+                "sagemaker:DescribeNotebookInstance",
+                "sagemaker:DeleteNotebookInstance",
+                "sagemaker:StopNotebookInstance"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
