@@ -26,17 +26,11 @@ Parameters:
     Description: Enter the prefix that should be added to the beginning of each alarm created by the solution, (e.g. AutoAlarm-i-00e4f327736cb077f-CPUUtilization-GreaterThanThreshold-80-5m)
     Type: String
     Default: AutoAlarm
-  ProductionDynamoDBTableName:
+  DynamoDBTableName:
     Description: Enter the name of the DynamoDB table for production
     Type: String
-  ProductionDynamoDbAccessRoleArn:
+  DynamoDbAccessRoleArn:
     Description: Enter the ARN of the role that the AutoStopEC2 lambda can assume to access the production DynamoDB table
-    Type: String
-  DevelopmentDynamoDBTableName:
-    Description: Enter the name of the DynamoDB table for development
-    Type: String
-  DevelopmentDynamoDbAccessRoleArn:
-    Description: Enter the ARN of the role that the AutoStopEC2 lambda can assume to access the development DynamoDB table
     Type: String
 
 
@@ -91,10 +85,8 @@ Resources:
       Environment:
         Variables:
           AWS_ACCOUNT_ID: !Ref AWS::AccountId
-          PROD_DYNAMODB_ROLE_ARN: !Ref ProductionDynamoDbAccessRoleArn
-          DEV_DYNAMODB_ROLE_ARN: !Ref DevelopmentDynamoDbAccessRoleArn
-          PROD_DYNAMODB_TABLE: !Ref ProductionDynamoDBTableName
-          DEV_DYNAMODB_TABLE: !Ref DevelopmentDynamoDBTableName
+          DYNAMODB_ROLE_ARN: !Ref DynamoDbAccessRoleArn
+          DYNAMODB_TABLE: !Ref DynamoDBTableName
       Tags:
         - Key: "EC2_AUTO_STOP"
           Value: "true"
@@ -133,22 +125,14 @@ Resources:
                 Action:
                   - "ec2:StopInstances"
                 Resource: "*"
-        - PolicyName: "AssumeCrossAccountRoleDev"
+        - PolicyName: "AssumeCrossAccountRole"
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
               - Effect: "Allow"
                 Action:
                   - "sts:AssumeRole"
-                Resource: !Ref DevelopmentDynamoDbAccessRoleArn
-        - PolicyName: "AssumeCrossAccountRoleProd"
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: "Allow"
-                Action:
-                  - "sts:AssumeRole"
-                Resource: !Ref ProductionDynamoDbAccessRoleArn
+                Resource: !Ref DynamoDbAccessRoleArn
 
   LambdaAutoStopperInvokePermission:
     Type: AWS::Lambda::Permission
