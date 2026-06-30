@@ -26,18 +26,6 @@ Parameters:
     Description: Enter the prefix that should be added to the beginning of each alarm created by the solution, (e.g. AutoAlarm-i-00e4f327736cb077f-CPUUtilization-GreaterThanThreshold-80-5m)
     Type: String
     Default: AutoAlarm
-  ProductionDynamoDBTableName:
-    Description: Enter the name of the DynamoDB table for production
-    Type: String
-  ProductionDynamoDbAccessRoleArn:
-    Description: Enter the ARN of the role that the AutoStopEC2 lambda can assume to access the production DynamoDB table
-    Type: String
-  DevelopmentDynamoDBTableName:
-    Description: Enter the name of the DynamoDB table for development
-    Type: String
-  DevelopmentDynamoDbAccessRoleArn:
-    Description: Enter the ARN of the role that the AutoStopEC2 lambda can assume to access the development DynamoDB table
-    Type: String
 
 
 Conditions:
@@ -69,93 +57,11 @@ Resources:
           ALARM_IDENTIFIER_PREFIX: !Ref AlarmIdentifierPrefix
           CLOUDWATCH_APPEND_DIMENSIONS: 'InstanceId, ImageId, InstanceType'
           AWS_ACCOUNT_ID: !Ref AWS::AccountId
-          LAMBDA_AUTO_STOP_ARN: !GetAtt LambdaAutoStopper.Arn
 
           ALARM_LAMBDA_ERROR_THRESHOLD: 0
           ALARM_LAMBDA_THROTTLE_THRESHOLD: 0
 
           DEFAULT_ALARM_SNS_TOPIC_ARN: !If [ConfigureAlarmNotifications, !Ref AlarmNotificationARN, !Ref "AWS::NoValue"]
-
-  LambdaAutoStopper:
-    Type: AWS::Lambda::Function
-    Properties:
-      FunctionName: "AutoStopEC2"
-      Handler: auto_stop_ec2.lambda_handler
-      Runtime: python3.8
-      Role:  !GetAtt LambdaAutoStopperRole.Arn
-      MemorySize: !Ref Memory
-      Timeout: 600
-      Code:
-        S3Bucket: !Ref S3DeploymentBucket
-        S3Key: !Ref S3DeploymentKey
-      Environment:
-        Variables:
-          AWS_ACCOUNT_ID: !Ref AWS::AccountId
-          PROD_DYNAMODB_ROLE_ARN: !Ref ProductionDynamoDbAccessRoleArn
-          DEV_DYNAMODB_ROLE_ARN: !Ref DevelopmentDynamoDbAccessRoleArn
-          PROD_DYNAMODB_TABLE: !Ref ProductionDynamoDBTableName
-          DEV_DYNAMODB_TABLE: !Ref DevelopmentDynamoDBTableName
-      Tags:
-        - Key: "EC2_AUTO_STOP"
-          Value: "true"
-
-  LambdaAutoStopperRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: "Allow"
-            Principal:
-              Service: "lambda.amazonaws.com"
-            Action: "sts:AssumeRole"
-      Policies:
-        - PolicyName: "LambdaEc2AutoStopperPolicy"
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - cloudwatch:PutMetricData
-                Resource: "*"
-              - Effect: Allow
-                Action:
-                  - logs:CreateLogGroup
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
-                  - logs:DescribeLogGroups
-                Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:*"
-              - Effect: Allow
-                Action:
-                  - logs:PutLogEvents
-                Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:*:log-stream:*"
-              - Effect: "Allow"
-                Action:
-                  - "ec2:StopInstances"
-                Resource: "*"
-        - PolicyName: "AssumeCrossAccountRoleDev"
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: "Allow"
-                Action:
-                  - "sts:AssumeRole"
-                Resource: !Ref DevelopmentDynamoDbAccessRoleArn
-        - PolicyName: "AssumeCrossAccountRoleProd"
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: "Allow"
-                Action:
-                  - "sts:AssumeRole"
-                Resource: !Ref ProductionDynamoDbAccessRoleArn
-
-  LambdaAutoStopperInvokePermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      Action: "lambda:InvokeFunction"
-      FunctionName: !GetAtt LambdaAutoStopper.Arn
-      Principal: "lambda.alarms.cloudwatch.amazonaws.com"
 
   CloudWatchAutoAlarmLambdaRole:
     Type: AWS::IAM::Role
