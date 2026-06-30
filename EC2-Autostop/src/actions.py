@@ -9,6 +9,7 @@ from datetime import datetime
 DEFAULT_THRESHOLD = 10
 THRESHOLD_MAP = {
     "Windows": {
+        "default": 8,
         "t3.medium": 5,
         "m5d.2xlarge": 3.5,
         "m5.xlarge": 6.5,
@@ -17,6 +18,7 @@ THRESHOLD_MAP = {
         "g5.2xlarge": 5
     },
     "Amazon Linux": {
+        "default": 4,
         "t3.medium": 3,
         "m5d.2xlarge": 0.4,
         "m5.xlarge": 0.75,
@@ -25,6 +27,8 @@ THRESHOLD_MAP = {
         "g5.2xlarge": 0.5
     }
 }
+
+THRESHOLD_TAG = "Auto_Alarm_Threshold"
 
 logger = logging.getLogger()
 log_level = getenv("LOGLEVEL", "INFO")
@@ -56,9 +60,13 @@ def boto3_client(resource, assumed_credentials=None):
 
     return client
 
-def determine_alarm_threshold(instance_type, platform):
-    if(platform in THRESHOLD_MAP and instance_type in THRESHOLD_MAP[platform]):
+def determine_alarm_threshold(instance_type, platform, tags):
+    if(THRESHOLD_TAG in tags):
+        return tags[THRESHOLD_TAG]
+    elif(platform in THRESHOLD_MAP and instance_type in THRESHOLD_MAP[platform]):
         return THRESHOLD_MAP[platform][instance_type]
+    elif(platform in THRESHOLD_MAP and "default" in THRESHOLD_MAP[platform])
+        return THRESHOLD_MAP[platform]["default"]
     else:
         logger.debug('No threshold set for platform {}, and instance type {}'.format(platform, instance_type))
         return DEFAULT_THRESHOLD
@@ -243,7 +251,7 @@ def process_alarm_tags(instance_id, instance_info, default_alarms, metric_dimens
 
     logger.info('Platform is: {}'.format(platform))
     #custom_alarms = dict()
-    threshold=determine_alarm_threshold(instance_type, platform)
+    threshold=determine_alarm_threshold(instance_type, platform, tags)
     # get all alarm tags from instance and add them into a custom tag list
     for instance_tag in tags:
         if instance_tag['Key'].startswith(alarm_identifier):
