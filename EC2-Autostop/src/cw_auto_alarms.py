@@ -127,7 +127,11 @@ def lambda_handler(event, context):
                                    cw_namespace, create_default_alarms_flag, alarm_separator, alarm_identifier)
         elif 'source' in event and event['source'] == 'aws.ec2' and event['detail']['state'] in ['stopped', 'terminated']:
             instance_id = event['detail']['instance-id']
-            result = delete_alarms(instance_id, alarm_identifier, alarm_separator)
+            # Only attempt delete if instance had auto alarms enabled
+            if check_alarm_tag(instance_id, create_alarm_tag):
+                result = delete_alarms(instance_id, alarm_identifier, alarm_separator)
+            else:
+                logger.debug('Instance {} does not have auto alarms, skipping delete'.format(instance_id))
         elif 'source' in event and event['source'] == 'aws.lambda' and event['detail'][
             'eventName'] == 'TagResource20170331v2':
             logger.debug(
