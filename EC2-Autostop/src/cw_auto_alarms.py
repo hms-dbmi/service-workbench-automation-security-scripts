@@ -125,7 +125,7 @@ def lambda_handler(event, context):
             if instance_info:
                 process_alarm_tags(instance_id, instance_info, default_alarms, metric_dimensions_map, sns_topic_arn,
                                    cw_namespace, create_default_alarms_flag, alarm_separator, alarm_identifier)
-        elif 'source' in event and event['source'] == 'aws.ec2' and event['detail']['state'] == 'terminated':
+        elif 'source' in event and event['source'] == 'aws.ec2' and event['detail']['state'] in ['stopped', 'terminated']:
             instance_id = event['detail']['instance-id']
             result = delete_alarms(instance_id, alarm_identifier, alarm_separator)
         elif 'source' in event and event['source'] == 'aws.lambda' and event['detail'][

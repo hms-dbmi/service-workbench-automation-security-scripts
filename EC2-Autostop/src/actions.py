@@ -61,8 +61,10 @@ def boto3_client(resource, assumed_credentials=None):
     return client
 
 def determine_alarm_threshold(instance_type, platform, tags):
-    if(THRESHOLD_TAG in tags):
-        return float(tags[THRESHOLD_TAG])  # ← Convert string to float
+    tags_dict = {tag['Key']: tag['Value'] for tag in tags}
+
+    if(THRESHOLD_TAG in tags_dict):
+        return float(tags_dict[THRESHOLD_TAG])  # ← Convert string to float
     elif(platform in THRESHOLD_MAP and instance_type in THRESHOLD_MAP[platform]):
         return THRESHOLD_MAP[platform][instance_type]
     elif(platform in THRESHOLD_MAP and "default" in THRESHOLD_MAP[platform]):
@@ -263,9 +265,12 @@ def process_alarm_tags(instance_id, instance_info, default_alarms, metric_dimens
             create_alarm_from_tag(instance_id, alarm_tag, instance_info, metric_dimensions_map, sns_topic_arn,
                                   alarm_separator, alarm_identifier, threshold)
         if platform:
-            for alarm_tag in default_alarms[cw_namespace][platform]:
-                create_alarm_from_tag(instance_id, alarm_tag, instance_info, metric_dimensions_map, sns_topic_arn,
-                                      alarm_separator, alarm_identifier, threshold)
+            if platform in default_alarms.get(cw_namespace, {}):
+                for alarm_tag in default_alarms[cw_namespace][platform]:
+                    create_alarm_from_tag(instance_id, alarm_tag, instance_info, metric_dimensions_map, sns_topic_arn,
+                                        alarm_separator, alarm_identifier, threshold)
+            else:
+                logger.warning("No default alarms configured for platform {}".format(platform))
         else:
             logger.warning("Skipping platform specific alarm creation for {}, unknown platform.".format(instance_id))
     else:
