@@ -9,7 +9,8 @@ from datetime import datetime
 DEFAULT_THRESHOLD = 10
 THRESHOLD_MAP = {
     "Windows": {
-        "t3.medium": 16,
+        "default": 8,
+        "t3.medium": 5,
         "m5d.2xlarge": 3.5,
         "m5.xlarge": 6.5,
         "m5.large": 13,
@@ -17,6 +18,7 @@ THRESHOLD_MAP = {
         "g5.2xlarge": 5
     },
     "Amazon Linux": {
+        "default": 4,
         "t3.medium": 3,
         "m5d.2xlarge": 0.4,
         "m5.xlarge": 0.75,
@@ -25,6 +27,8 @@ THRESHOLD_MAP = {
         "g5.2xlarge": 0.5
     }
 }
+
+THRESHOLD_TAG = "Auto_Alarm_Threshold"
 
 logger = logging.getLogger()
 log_level = getenv("LOGLEVEL", "INFO")
@@ -56,9 +60,15 @@ def boto3_client(resource, assumed_credentials=None):
 
     return client
 
-def determine_alarm_threshold(instance_type, platform):
-    if(platform in THRESHOLD_MAP and instance_type in THRESHOLD_MAP[platform]):
+def determine_alarm_threshold(instance_type, platform, tags):
+    tags_dict = {tag['Key']: tag['Value'] for tag in tags}
+
+    if(THRESHOLD_TAG in tags_dict):
+        return float(tags_dict[THRESHOLD_TAG])  # ← Convert string to float
+    elif(platform in THRESHOLD_MAP and instance_type in THRESHOLD_MAP[platform]):
         return THRESHOLD_MAP[platform][instance_type]
+    elif(platform in THRESHOLD_MAP and "default" in THRESHOLD_MAP[platform]):
+        return THRESHOLD_MAP[platform]["default"]
     else:
         logger.debug('No threshold set for platform {}, and instance type {}'.format(platform, instance_type))
         return DEFAULT_THRESHOLD
@@ -143,7 +153,7 @@ def process_lambda_alarms(function_name, tags, activation_tag, default_alarms, s
                          dimensions, sns_topic_arn, alarm_identifier, DEFAULT_THRESHOLD)
 
 
-def create_alarm_from_tag(instance_id, alarm_tag, instance_info, metric_dimensions_map, sns_topic_arn, alarm_separator,
+def create_alarm_from_tag(id, alarm_tag, instance_info, metric_dimensions_map, sns_topic_arn, alarm_separator,
                           alarm_identifier, threshold):
     alarm_properties = alarm_tag['Key'].split(alarm_separator)
     namespace = alarm_properties[1]
@@ -190,7 +200,7 @@ def create_alarm_from_tag(instance_id, alarm_tag, instance_info, metric_dimensio
         logger.error('Unable to determine the dimensions for alarm tag: {}'.format(alarm_tag))
         raise Exception
 
-    AlarmName = alarm_separator.join([alarm_identifier, instance_id, namespace, MetricName])
+    AlarmName = alarm_separator.join([alarm_identifier, id, namespace, MetricName])
     properties_offset = 0
     try:
         if additional_dimensions:
@@ -243,7 +253,7 @@ def process_alarm_tags(instance_id, instance_info, default_alarms, metric_dimens
 
     logger.info('Platform is: {}'.format(platform))
     #custom_alarms = dict()
-    threshold=determine_alarm_threshold(instance_type, platform)
+    threshold=determine_alarm_threshold(instance_type, platform, tags)
     # get all alarm tags from instance and add them into a custom tag list
     for instance_tag in tags:
         if instance_tag['Key'].startswith(alarm_identifier):
@@ -255,9 +265,12 @@ def process_alarm_tags(instance_id, instance_info, default_alarms, metric_dimens
             create_alarm_from_tag(instance_id, alarm_tag, instance_info, metric_dimensions_map, sns_topic_arn,
                                   alarm_separator, alarm_identifier, threshold)
         if platform:
-            for alarm_tag in default_alarms[cw_namespace][platform]:
-                create_alarm_from_tag(instance_id, alarm_tag, instance_info, metric_dimensions_map, sns_topic_arn,
-                                      alarm_separator, alarm_identifier, threshold)
+            if platform in default_alarms.get(cw_namespace, {}):
+                for alarm_tag in default_alarms[cw_namespace][platform]:
+                    create_alarm_from_tag(instance_id, alarm_tag, instance_info, metric_dimensions_map, sns_topic_arn,
+                                        alarm_separator, alarm_identifier, threshold)
+            else:
+                logger.warning("No default alarms configured for platform {}".format(platform))
         else:
             logger.warning("Skipping platform specific alarm creation for {}, unknown platform.".format(instance_id))
     else:
@@ -351,13 +364,28 @@ def create_alarm(AlarmName, MetricName, ComparisonOperator, Period, Threshold, S
     try:
         cw_client = boto3_client('cloudwatch')
 
-        alarm = {'AlarmName': AlarmName, 'AlarmDescription': AlarmDescription, 'MetricName': MetricName,
-                 'Namespace': Namespace, 'Dimensions': Dimensions, 'Period': Period, 'EvaluationPeriods': 12,
-                 'DatapointsToAlarm': 10, 'TreatMissingData': "ignore", 'Threshold': threshold,
-                 'ComparisonOperator': ComparisonOperator, 'Statistic': Statistic, 'ActionsEnabled': True,
-                 'AlarmActions': [
-                     os.environ['LAMBDA_AUTO_STOP_ARN']
-                 ]}
+        alarm = {
+            'AlarmName': AlarmName,
+            'AlarmDescription': AlarmDescription,
+            'MetricName': MetricName,
+            'Namespace': Namespace,
+            'Dimensions': Dimensions,
+            'Period': Period,
+            'EvaluationPeriods': 14,
+            'DatapointsToAlarm': 12, # 60 minutes idle (based on minimum per 5m segment of cpu usage) in 70 min window
+            'TreatMissingData':"ignore",
+            'Threshold': threshold,
+            'ComparisonOperator': ComparisonOperator,
+            'Statistic': Statistic,
+            'ActionsEnabled': True,
+        }
+
+        region = os.environ['AWS_REGION']
+        account = os.environ['AWS_ACCOUNT_ID']
+
+        alarm['AlarmActions'] = [
+            f"arn:aws:swf:{region}:{account}:action/actions/AWS_EC2.InstanceId.Stop/1.0"
+        ]
 
         if sns_topic_arn is not None:
             alarm['AlarmActions'].append(sns_topic_arn)
