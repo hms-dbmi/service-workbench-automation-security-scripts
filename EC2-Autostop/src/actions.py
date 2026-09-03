@@ -65,7 +65,7 @@ def determine_alarm_threshold(instance_type, platform, tags):
         return float(tags[THRESHOLD_TAG])  # ← Convert string to float
     elif(platform in THRESHOLD_MAP and instance_type in THRESHOLD_MAP[platform]):
         return THRESHOLD_MAP[platform][instance_type]
-    elif(platform in THRESHOLD_MAP and "default" in THRESHOLD_MAP[platform])
+    elif(platform in THRESHOLD_MAP and "default" in THRESHOLD_MAP[platform]):
         return THRESHOLD_MAP[platform]["default"]
     else:
         logger.debug('No threshold set for platform {}, and instance type {}'.format(platform, instance_type))
