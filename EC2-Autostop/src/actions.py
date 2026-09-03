@@ -371,8 +371,8 @@ def create_alarm(AlarmName, MetricName, ComparisonOperator, Period, Threshold, S
             'Namespace': Namespace,
             'Dimensions': Dimensions,
             'Period': Period,
-            'EvaluationPeriods': 12,
-            'DatapointsToAlarm':10,
+            'EvaluationPeriods': 14,
+            'DatapointsToAlarm': 12, # 60 minutes idle (based on minimum per 5m segment of cpu usage) in 70 min window
             'TreatMissingData':"ignore",
             'Threshold': threshold,
             'ComparisonOperator': ComparisonOperator,
