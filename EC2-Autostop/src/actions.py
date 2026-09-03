@@ -62,7 +62,7 @@ def boto3_client(resource, assumed_credentials=None):
 
 def determine_alarm_threshold(instance_type, platform, tags):
     if(THRESHOLD_TAG in tags):
-        return tags[THRESHOLD_TAG]
+        return float(tags[THRESHOLD_TAG])  # ← Convert string to float
     elif(platform in THRESHOLD_MAP and instance_type in THRESHOLD_MAP[platform]):
         return THRESHOLD_MAP[platform][instance_type]
     elif(platform in THRESHOLD_MAP and "default" in THRESHOLD_MAP[platform])
